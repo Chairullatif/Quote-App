@@ -1,44 +1,43 @@
 package com.khoirullatif.quoteapp
 
-import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.ArrayAdapter
 import android.widget.Toast
-import com.khoirullatif.quoteapp.databinding.ActivityMainBinding
+import com.khoirullatif.quoteapp.databinding.ActivityListQuotesBinding
 import com.loopj.android.http.AsyncHttpClient
 import com.loopj.android.http.AsyncHttpResponseHandler
 import cz.msebera.android.httpclient.Header
-import org.json.JSONObject
+import cz.msebera.android.httpclient.client.HttpClient
+import org.json.JSONArray
 
-class MainActivity : AppCompatActivity() {
-
-    private lateinit var binding: ActivityMainBinding
+class ListQuotesActivity : AppCompatActivity() {
 
     companion object {
-        private val TAG = MainActivity::class.java.simpleName
+        private val TAG = ListQuotesActivity::class.java.simpleName
     }
+
+    private lateinit var binding: ActivityListQuotesBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
+        binding = ActivityListQuotesBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        getRandomQuote()
+        supportActionBar?.title = "List of Quotes"
 
-        binding.btnAllquotes.setOnClickListener {
-            val intent = Intent(this@MainActivity, ListQuotesActivity::class.java)
-            startActivity(intent)
-        }
+        getListQuotes()
     }
 
-    private fun getRandomQuote() {
+    private fun getListQuotes() {
         binding.progressBar.visibility = View.VISIBLE
-        val client = AsyncHttpClient()
-        val url = "https://quote-api.dicoding.dev/random"
 
-        client.get(url, object : AsyncHttpResponseHandler() {
+        val client = AsyncHttpClient()
+        val url = "https://quote-api.dicoding.dev/list"
+
+        client.get(url, object : AsyncHttpResponseHandler(){
             override fun onSuccess(
                 statusCode: Int,
                 headers: Array<out Header>?,
@@ -46,21 +45,24 @@ class MainActivity : AppCompatActivity() {
             ) {
                 binding.progressBar.visibility = View.INVISIBLE
 
-                //parsing data
+                val listQuotes = ArrayList<String>()
+
                 val result = String(responseBody!!)
                 Log.d(TAG, result)
 
                 try {
-                    val responseObject = JSONObject(result)
+                    val responseArray = JSONArray(result)
 
-                    val quote = responseObject.getString("en")
-                    val author = responseObject.getString("author")
+                    for (i in 0 until responseArray.length()) {
+                        val quote = responseArray.getJSONObject(i).getString("en")
+                        val author = responseArray.getJSONObject(i).getString("author")
+                        listQuotes.add("\n$quote\n - $author\n")
+                    }
 
-                    binding.tvQuote.text = quote
-                    binding.tvAuthor.text = author
+                    val adapter = ArrayAdapter(this@ListQuotesActivity, android.R.layout.simple_list_item_1, listQuotes)
+                    binding.lvQuotes.adapter = adapter
                 } catch (e: Exception) {
-                    Toast.makeText(this@MainActivity, e.message, Toast.LENGTH_SHORT).show()
-                    e.printStackTrace()
+
                 }
             }
 
@@ -78,9 +80,8 @@ class MainActivity : AppCompatActivity() {
                     else -> "$statusCode : ${error?.message}"
                 }
 
-                Toast.makeText(this@MainActivity, errorMessage, Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ListQuotesActivity, errorMessage, Toast.LENGTH_SHORT).show()
             }
-
         })
     }
 }
